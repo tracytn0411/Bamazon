@@ -18,31 +18,44 @@ allProducts();
 
 //Display all items available for sale
 function allProducts() {
+  var table = new Table({
+    chars: {
+      'top': '═'
+      , 'top-left': '╔'
+      , 'top-right': '╗'
+      , 'bottom': '═'
+      , 'bottom-left': '╚'
+      , 'bottom-right': '╝'
+      , 'left': '║'
+      , 'right': '║'
+    },
+    colWidths: [54],
+    style: {
+      head: [], border: [],
+    }
+  });
+  table.push(
+    ['                 Welcome to BAMAZON']
+  );
+  console.log("\n" + table.toString());
+
   connection.query('SELECT * FROM products', function(error, results, fields) {
     if (error) throw error;
-
     // Style and display results as a table
     var table = new Table({
-      head: ['ID'.bold, 'Products'.bold, 'Price'.bold],
+      head: ['ID'.bold.yellow, 'Products'.bold.yellow, 'Price'.bold.yellow],
       colWidths: [7, 30, 15]
     });
     for (var i = 0; i < results.length; i++){
       table.push(
-      [results[i].item_id, results[i].product_name, '$ ' + results[i].price]
+      [results[i].item_id, results[i].product_name.bold, colors.green('$ ' + results[i].price)]
       );
     }
-    var storeBanner =
-      "\n==============================================================".rainbow +
-      "\n                          " + "BAMAZON".magenta + 
-      "\n==============================================================".rainbow
-      
-    console.log(storeBanner);
+    
     console.log(table.toString() + "\n");
-
     orderPrompt();
   })
 }
-
 
 function orderPrompt() {
   inquirer
@@ -50,7 +63,7 @@ function orderPrompt() {
       {
         name: 'product_id',
         type: 'input',
-        message: 'Please enter the id of the product you would like to purchase:'.cyan,
+        message: 'Please enter the id of the product you would like to purchase:',
         validate: function (value) {
           if (value <= 0 || isNaN(value)) {
             console.log('\nPlease enter a valid id number.'.red)
@@ -62,7 +75,7 @@ function orderPrompt() {
       {
         name: 'product_quantity',
         type: 'number',
-        message: 'Please enter the quantiy of the product you would like to purchase:'.cyan,
+        message: 'Please enter the quantiy of the product you would like to purchase:',
         validate: function (value) {
           if (value <= 0 || isNaN(value)) {
             console.log('\nPlease enter a valid id number.\n'.red)
@@ -87,7 +100,7 @@ function inventoryCheck(itemID, itemQuantity) {
       console.log('\n***Sorry! We only have '.magenta + results[0].stock_quantity + ' ' + results[0].product_name +  ' in stock.\n'.magenta);
       orderPrompt();
     } else {
-      console.log('\n***You have added '.blue + itemQuantity + ' ' +  results[0].product_name + ' to your cart.\n'.blue);
+      console.log(colors.cyan('\n***You have added ' + itemQuantity + ' ' +  results[0].product_name + ' to your cart.\n'));
       var totalCost = itemQuantity * results[0].price; //set variable to use later
       buyProduct(itemID, itemQuantity, totalCost); //pass arguments to next function
     }
@@ -108,7 +121,7 @@ function buyProduct(itemID, itemQuantity, totalCost) {
         connection.query('UPDATE products SET stock_quantity = stock_quantity - ? WHERE item_id = ?', [itemQuantity, itemID], function(error, results, fields) {
           if (error) throw error;
           
-          console.log("\nThank you for your purchase".green);
+          console.log(colors.green("\nThank you for your purchase"));
           console.log(colors.green('Your receipt is $' + totalCost + '\n'));
           buyDifferent();
         });
@@ -140,7 +153,7 @@ function buyDifferent(){
 }
 
 function exit() {
-  console.log(colors.yellow('\nThank you for visiting Bamazon. We hope to see you again soon!'));
+  console.log(colors.blue('\n*****Thank you for visiting Bamazon. We hope to see you again soon!*****\n'));
   connection.end();
 }
 
