@@ -12,12 +12,9 @@ var connection = mysql.createConnection({
     database        : process.env.DB_DATABASE 
 });
 
-connection.connect();
-
-allProducts();
-
-//Display all items available for sale
-function allProducts() {
+//Display welcome banner and allProducts table after connecting to mysql
+connection.connect(function(error){
+  if (error) throw error;
   var table = new Table({
     chars: {
       'top': '═'
@@ -38,12 +35,16 @@ function allProducts() {
     ['                 Welcome to BAMAZON']
   );
   console.log("\n" + table.toString());
+  allProducts();
+});
 
+//Display all items available for sale
+function allProducts() {
   connection.query('SELECT * FROM products', function(error, results, fields) {
     if (error) throw error;
     // Style and display results as a table
     var table = new Table({
-      head: ['ID'.bold.yellow, 'Products'.bold.yellow, 'Price'.bold.yellow],
+      head: ['ID'.bold, 'Products'.bold, 'Price'.bold],
       colWidths: [7, 30, 15]
     });
     for (var i = 0; i < results.length; i++){
@@ -51,7 +52,6 @@ function allProducts() {
       [results[i].item_id, results[i].product_name.bold, colors.green('$ ' + results[i].price)]
       );
     }
-    
     console.log(table.toString() + "\n");
     orderPrompt();
   })
@@ -66,7 +66,7 @@ function orderPrompt() {
         message: 'Please enter the id of the product you would like to purchase:',
         validate: function (value) {
           if (value <= 0 || isNaN(value)) {
-            console.log('\nPlease enter a valid id number.'.red)
+            return'Please enter a valid id number.'.red
           } else{
             return true;
           }
@@ -78,7 +78,7 @@ function orderPrompt() {
         message: 'Please enter the quantiy of the product you would like to purchase:',
         validate: function (value) {
           if (value <= 0 || isNaN(value)) {
-            console.log('\nPlease enter a valid id number.\n'.red)
+            return 'Please enter a valid number.'.red
           } else {
             return true;
           }
@@ -90,6 +90,7 @@ function orderPrompt() {
     }); 
 }
 
+//function request query to check for inventory and response
 function inventoryCheck(itemID, itemQuantity) {
   connection.query('SELECT * FROM products WHERE item_id = ?', [itemID], function (error, results, fields) {
     if (error) throw error;
@@ -97,16 +98,17 @@ function inventoryCheck(itemID, itemQuantity) {
       console.log("\n***Sorry! We are currently out of stock\n".magenta);
       buyDifferent();
     } else if (itemQuantity > results[0].stock_quantity) {
-      console.log('\n***Sorry! We only have '.magenta + results[0].stock_quantity + ' ' + results[0].product_name +  ' in stock.\n'.magenta);
-      orderPrompt();
+      console.log(colors.magenta('\n***Sorry! We only have ' + results[0].stock_quantity + ' ' + results[0].product_name +  ' in stock.\n'));
+      buyDifferent();
     } else {
-      console.log(colors.cyan('\n***You have added ' + itemQuantity + ' ' +  results[0].product_name + ' to your cart.\n'));
+      console.log(colors.blue('\n***You have added ' + colors.underline(itemQuantity + ' ' + results[0].product_name) + ' to your cart.\n'));
       var totalCost = itemQuantity * results[0].price; //set variable to use later
       buyProduct(itemID, itemQuantity, totalCost); //pass arguments to next function
     }
   })
 }
 
+//function to confirm purchase and make query to update database 
 function buyProduct(itemID, itemQuantity, totalCost) {
   inquirer
     .prompt([
@@ -118,19 +120,20 @@ function buyProduct(itemID, itemQuantity, totalCost) {
     ])
     .then(function(answers){
       if (answers.checkout){
-        connection.query('UPDATE products SET stock_quantity = stock_quantity - ? WHERE item_id = ?', [itemQuantity, itemID], function(error, results, fields) {
+        connection.query('UPDATE products SET stock_quantity = stock_quantity - ?, product_sales = product_sales + ? WHERE item_id = ?', [itemQuantity, totalCost, itemID], function(error, results, fields) {
           if (error) throw error;
-          
           console.log(colors.green("\nThank you for your purchase"));
           console.log(colors.green('Your receipt is $' + totalCost + '\n'));
           buyDifferent();
-        });
+          });
       } else {
         buyDifferent();
       }
-    })
+    }
+  );
 }
 
+//Function to go back to allproducts() or exit
 function buyDifferent(){
   inquirer
     .prompt([
@@ -149,11 +152,12 @@ function buyDifferent(){
         case 'No. I will come back later':
           exit();
       }
-    })
+    }
+  );
 }
 
 function exit() {
-  console.log(colors.blue('\n*****Thank you for visiting Bamazon. We hope to see you again soon!*****\n'));
+  console.log(colors.cyan('\n*****THANK YOU FOR VISITING BAMAZON. WE HOPE TO SEE YOU AGAIN SOON.*****\n\n'));
   connection.end();
 }
 

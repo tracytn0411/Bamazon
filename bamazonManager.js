@@ -1,4 +1,3 @@
-
 //dependencies
 require('dotenv').config();
 var inquirer = require('inquirer');
@@ -6,7 +5,7 @@ var Table = require('cli-table3');
 var colors = require('colors');
 var mysql = require('mysql');
 
-//connect to mysql database
+//Connect to mysql database
 var connection = mysql.createConnection({
     host            : process.env.DB_HOST,
     user            : process.env.DB_USER ,
@@ -14,6 +13,7 @@ var connection = mysql.createConnection({
     database        : process.env.DB_DATABASE 
 });
 
+//Show Manager Portal banner after connecting to mysql
 connection.connect(function(error){
   if (error) throw error;
   var table = new Table({
@@ -39,7 +39,7 @@ connection.connect(function(error){
   managerPrompt();
 });
 
-//function to display menu options for manager
+//Function to display menu options for manager
 function managerPrompt (){
   inquirer
     .prompt([
@@ -64,17 +64,16 @@ function managerPrompt (){
           addProduct();
           break;
         case "Exit":
-          connection.end();
+          exit();
           break;
       }
     })
 }
 
-//function to show all available item 
+//Function to show all available item 
 function allProducts() {
   connection.query('SELECT * FROM products', function(error, results, fields) {
     if (error) throw error;
-
     // Style and display results as a table
     var table = new Table({
       head: ['ID'.bold, 'Products'.bold, 'Departments'.bold, 'Price'.bold, 'Quantity'.bold],
@@ -87,10 +86,10 @@ function allProducts() {
     }
     console.log(table.toString() + "\n");
     managerPrompt();
-  })
+  });
 }
 
-//function to show items with stock quantity lower than 5
+//Function to show items with stock quantity lower than 5 (use 20 for testing purpose)
 function lowInventory() {
   connection.query('SELECT * FROM products WHERE stock_quantity < 20', function (error, results, fields){
     if (error) throw error;
@@ -100,7 +99,7 @@ function lowInventory() {
     } else {
       var lowInvTable = new Table({
         head: ['ID'.bold, 'Products'.bold, 'Departments'.bold, 'Price'.bold, 'Quantities'.bold],
-        colWidths: [7, 30, 15]
+        colWidths: [5, 25, 19, 13, 10]
       });
       for (var i = 0; i < results.length; i++){
         lowInvTable.push(
@@ -113,17 +112,18 @@ function lowInventory() {
   });
 }
 
-//function to add to Inventory
+//Function to add to Inventory
 function addInventory () {
+  console.log('\nPlease fill out the information of new inventory.')
   inquirer
     .prompt([
       {
         name: 'product_id',
         type: 'input',
-        message: 'Please enter the id of item you would like to add inventory: ',
+        message: 'Product ID: ',
         validate: function (value) {
           if (value <=0 || isNaN(value)) {
-            console.log('\nPlease enter a valid id number.'.red)
+            return 'Please enter a valid id number.'.red
           } else {
             return true;
           }
@@ -131,14 +131,21 @@ function addInventory () {
       },
       {
         name: "product_quantity",
-        type: 'number',
-        message: 'Please enter the quantity number you would like to add to inventory',
+        type: 'input',
+        message: 'Quantity: ',
+        validate: function (value) {
+          if (value <=0 || isNaN(value)) {
+            return 'Please enter a number.'.red
+          } else {
+            return true;
+          }
+        }
       }
     ])
     .then(function(answers){
       connection.query('UPDATE products SET stock_quantity = stock_quantity + ? WHERE item_id = ?', [answers.product_quantity,answers.product_id], function (error, results, fields) {
         if (error) throw error;
-        console.log('\nNew inventory has been successfully updated\n'.blue);
+        console.log('\n*****New inventory has been successfully updated\n'.blue);
         inquirer
           .prompt([
             {
@@ -158,7 +165,7 @@ function addInventory () {
       });
     }
 
-//function to make sql query to add new product to database
+//Function to make sql query to add new product to database
 function addProduct(){
   console.log('\nPlease fill out the information of new product.')
   inquirer
@@ -176,16 +183,30 @@ function addProduct(){
       {
         name: 'product_price',
         type: 'input',
-        message: 'Cost per item ($): '
+        message: 'Cost per item: ' + '$'.green,
+        validate: function (value) {
+          if (value <=0 || isNaN(value)) {
+            return 'Please enter a number.'.red
+          } else {
+            return true;
+          }
+        }
       },
       {
         name: 'product_quantity',
         type: 'input',
-        message: 'Quantity: '
+        message: 'Quantity: ',
+        validate: function (value) {
+          if (value <=0 || isNaN(value)) {
+            return 'Please enter a number.'.red
+          } else {
+            return true;
+          }
+        }
       }
     ])
     .then(function(answers) {
-      connection.query('INSERT INTO products SET ?',
+      connection.query('INSERT INTO products SET ?', //skip item_id cuz it's auto-increment
       {
         product_name: answers.product_name,
         department_name: answers.product_department,
@@ -194,7 +215,7 @@ function addProduct(){
       }, 
       function (error, results, fields) {
         if (error) throw error;
-        console.log('\n' + answers.product_name + ' was successfully added.\n'.blue);
+        console.log(colors.blue('\n*****' + answers.product_name.underline + ' has been successfully added.\n'));
         inquirer
         .prompt([
           {
@@ -214,3 +235,8 @@ function addProduct(){
     });
   }
 
+function exit() {
+  console.log(colors.cyan(
+    '\n******************************SESSION ENDED******************************\n\n'));
+  connection.end();
+}
