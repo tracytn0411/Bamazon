@@ -19,7 +19,7 @@
   "homepage": "https://github.com/tracytn0411/Bamazon#readme",
   "dependencies": {
     "cli-table3": "^0.5.1",
-    "colors": "^1.3.3",
+    "colors": "^1.4.0",
     "dotenv": "^8.1.0",
     "inquirer": "^7.0.0",
     "mysql": "^2.17.1"
